@@ -4,14 +4,21 @@ import re
 
 questions = {
 	'is_pirate':"Blimey! Ye landlubber still be learnin' the ropes! Every good talk starts with a hearty \"Arrrgh!\"",
-	'which_side':"Good to be seein' you back.\nDo you be lookin' to get(1) or give(2) help today?"
+	'which_side':"Good to be seein' you back.\nDo you be lookin' to give(1) or get(2) help today?"
 }
 
 responses = {
 	'is_pirate':(
-			('a[ar]+r.*!', True),
-			('.*', None)
-		)
+			('a[ar]+r', True), # A proper pirate responds "Arrrgh!" or some variation thereof
+			('.*', None),
+		),
+	'which_side':(
+			('give','pirate'),
+			('1', 	'pirate'),
+			('get', 'victim'),
+			('2', 	'victim'),
+			('recieve', 'victim'),
+		),
 }
 
 class Session(object):
@@ -40,17 +47,21 @@ class Session(object):
 		if 'is_pirate' not in self.knownData:
 			return self.askData('is_pirate')
 
-		return self.askData('which_side')
+		if 'which_side' not in self.knownData:
+			return self.askData('which_side')
+
+		return "This be the end of the demo, you {}.".format(self.knownData['which_side'])
 
 	def interpretResponse(self, request):
 		l = responses[self.activeQuestion]
 		for patt, val in l:
-			if re.search(patt, request):
+			if re.search(patt, request.lower()):
 
-				print('learned {}:{}'.format(self.activeQuestion, val))
+				if val is not None:
+					print('learned {}:{}'.format(self.activeQuestion, val))
 
-				self.knownData[self.activeQuestion] = val
-				self.activeQuestion = None
+					self.knownData[self.activeQuestion] = val
+					self.activeQuestion = None
 
 				return val
 		return None
@@ -63,16 +74,21 @@ class Session(object):
 		return questions[data]
 
 		
-		
+
 def main():
-	session = Session(input('Your name:'))
+	session = Session('testuser')
 	while True:
 		request = input('---> ')
 
 		if not request:
 			break
 
-		print(session.handleQuery(request))
+		response = session.handleQuery(request)
+
+		if response:
+			print("\n"+response)
+		else:
+			return
 
 
 if __name__ == '__main__':
