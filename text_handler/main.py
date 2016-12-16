@@ -2,9 +2,16 @@
 
 import re
 
-pirate ={
-	'conversation_start_err':"Blimey! Ye landlubber still be learnin' the ropes! Every good talk starts with a hearty \"Arrrgh!\"",
-	'get_or_give_q':"Good to be seein' you back.\nDo you be lookin' to get(1) or give(2) help today?"
+questions = {
+	'is_pirate':"Blimey! Ye landlubber still be learnin' the ropes! Every good talk starts with a hearty \"Arrrgh!\"",
+	'which_side':"Good to be seein' you back.\nDo you be lookin' to get(1) or give(2) help today?"
+}
+
+responses = {
+	'is_pirate':(
+			('a[ar]+r.*!', True),
+			('.*', None)
+		)
 }
 
 class Session(object):
@@ -14,34 +21,49 @@ class Session(object):
 
 	knownData = {}
 
+	activeQuestion = 'is_pirate'
+
 	def __init__(self, name):
 		super(Session, self).__init__()
 		self.name = name
 
 
-	def handleQuery(session, request):
-		session.queriesProcessed += 1
+	def handleQuery(self, request):
+		self.queriesProcessed += 1
 
-		if not session.hasOpenedWell:
-			if isProperOpener(request):
-				session.hasOpenedWell = True
-			else:
-				return pirate['conversation_start_err']
+		if self.activeQuestion:
+			trans = self.interpretResponse(request)
+			if trans == None:
+				# We couldn't (or refused to) parse the response
+				return self.askData(self.activeQuestion)
 
-		return pirate['get_or_give_q']
+		if 'is_pirate' not in self.knownData:
+			return self.askData('is_pirate')
+
+		return self.askData('which_side')
+
+	def interpretResponse(self, request):
+		l = responses[self.activeQuestion]
+		for patt, val in l:
+			if re.search(patt, request):
+
+				print('learned {}:{}'.format(self.activeQuestion, val))
+
+				self.knownData[self.activeQuestion] = val
+				self.activeQuestion = None
+
+				return val
+		return None
 
 	def askData(self, data):
 		if data in self.knownData:
 			print("Warning: {} is already known about user {}".format(data, self.name))
+		self.activeQuestion = data
+
+		return questions[data]
 
 		
 		
-
-def isProperOpener(request):
-	# A proper pirate greeting must be at least "Aar!" or "Arr!" with some other characters maybe thrown in.
-	return bool(re.match('.*a[ar]+r.*!.*', request.lower()))
-
-
 def main():
 	session = Session(input('Your name:'))
 	while True:
